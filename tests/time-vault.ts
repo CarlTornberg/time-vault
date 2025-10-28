@@ -77,6 +77,40 @@ describe("time-vault", () => {
 
   });
 
+  it('Should not be able to deposit to locked vault', async () => {
+    const charlie = Keypair.generate();
+    await airdrop(charlie.publicKey, LAMPORTS_PER_SOL);
+
+    await program
+      .methods
+      .initialize(new anchor.BN(100))
+      .accounts({signer: charlie.publicKey})
+      .signers([charlie])
+      .rpc({commitment: "confirmed"});  
+
+    await program.methods
+      .lock(true)
+      .accounts({owner: charlie.publicKey})
+      .signers([charlie])
+      .rpc({commitment: "confirmed"});
+
+    try {
+      await program.methods
+      .deposit(new anchor.BN(1000))
+      .accounts({
+        from: bob.publicKey, 
+        to: getVaultPDA(charlie.publicKey)[0]})
+      .signers([bob])
+      .rpc({commitment: "confirmed"});
+      
+      should().fail("Should not be able to withdraw to locked vault.");
+    }
+    catch(e) {
+      should().equal(e.error.errorCode.code, "Locked", "Incorrect error");
+    }
+    
+  });
+
   async function airdrop(to: PublicKey, amount: number) { 
     const blockhash = await conn.getLatestBlockhash();
     await conn.confirmTransaction({
