@@ -13,9 +13,8 @@ pub mod time_vault {
     pub use states::*;
     pub use instructions::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        msg!("Greetings from: {:?}", ctx.program_id);
-        Ok(())
+    pub fn initialize(ctx: Context<Initialize>, withdraw_cooldown: u64) -> Result<()> {
+        instructions::initialize_vault(ctx, withdraw_cooldown)
     }
 
     pub fn deposit(ctx: Context<Deposit>) -> Result<()> {
