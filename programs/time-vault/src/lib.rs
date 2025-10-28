@@ -25,8 +25,8 @@ pub mod time_vault {
         Ok(())
     }
 
-    pub fn lock(ctx: Context<Lock>) -> Result<()> {
-        Ok(())
+    pub fn lock(ctx: Context<Lock>, locked: bool) -> Result<()> {
+        instructions::set_locked(ctx, locked)
     }
 }
 

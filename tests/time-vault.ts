@@ -13,6 +13,9 @@ describe("time-vault", () => {
   const conn = program.provider.connection;
   const alice = Keypair.generate();
   const bob = Keypair.generate();
+  console.log("Alice:", alice.publicKey, "\nPDA:", getVaultPDA(alice.publicKey));
+  console.log("Bob:", bob.publicKey, "\nPDA:", getVaultPDA(bob.publicKey));
+  
 
   it('Initialize alice vault', async () => {
     await airdrop(alice.publicKey, LAMPORTS_PER_SOL);
@@ -27,6 +30,33 @@ describe("time-vault", () => {
     console.log(tx);
   });
 
+  it('Lock and unlock alice vault', async () => {
+    await program.methods
+      .lock(true)
+      .accounts({owner: alice.publicKey})
+      .signers([alice])
+      .rpc({commitment: "confirmed"});
+    let vault = await program.account
+      .vault
+      .fetch(
+        getVaultPDA(alice.publicKey)[0],
+        "confirmed"
+      );
+    should().equal(vault.isLocked, true, "Vault is not locked");
+    await program.methods
+      .lock(false)
+      .accounts({owner: alice.publicKey})
+      .signers([alice])
+      .rpc({commitment: "confirmed"});
+    vault = await program.account
+      .vault
+      .fetch(
+        getVaultPDA(alice.publicKey)[0],
+        "confirmed"
+      );
+    should().equal(vault.isLocked, false, "Vault did not unlock.");
+  });
+
   async function airdrop(to: PublicKey, amount: number) { 
     const blockhash = await conn.getLatestBlockhash();
     await conn.confirmTransaction({
@@ -34,5 +64,15 @@ describe("time-vault", () => {
       blockhash: blockhash.blockhash,
       lastValidBlockHeight: blockhash.lastValidBlockHeight
     }, "confirmed");
+  };
+
+  function getVaultPDA(of: PublicKey) {
+    return PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("vault"),
+        of.toBuffer()
+      ],
+      program.programId
+    )
   }
 });

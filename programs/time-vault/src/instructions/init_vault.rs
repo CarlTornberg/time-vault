@@ -8,7 +8,7 @@ pub fn initialize_vault(ctx: Context<Initialize>, withdraw_cooldown: u64) -> Res
     vault.is_locked = true;
     vault.recent_withdraw = 0;
     vault.withdraw_cooldown = withdraw_cooldown;
-    msg!("Created vault {} with withdraw cooldown {}", vault.key(), vault.withdraw_cooldown);
+    msg!("Created vault {} with owner {} and withdraw cooldown {}", vault.key(), vault.owner, vault.withdraw_cooldown);
     Ok(())
 }
 
