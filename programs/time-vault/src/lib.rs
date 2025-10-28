@@ -17,8 +17,8 @@ pub mod time_vault {
         instructions::initialize_vault(ctx, withdraw_cooldown)
     }
 
-    pub fn deposit(ctx: Context<Deposit>) -> Result<()> {
-        Ok(())
+    pub fn deposit(ctx: Context<Deposit>, lamports: u64) -> Result<()> {
+        instructions::deposit(ctx, lamports)
     }
 
     pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {

@@ -57,6 +57,26 @@ describe("time-vault", () => {
     should().equal(vault.isLocked, false, "Vault did not unlock.");
   });
 
+  it('Bob should transfer to Alice', async () => {
+
+    const bal = await conn.getBalance(getVaultPDA(alice.publicKey)[0], "confirmed");
+    const transfer_amount: number = 100.000;
+
+    await program.methods
+    .deposit(new anchor.BN(transfer_amount))
+    .accounts({
+      from: bob.publicKey,
+      to: getVaultPDA(alice.publicKey)[0],
+    })
+    .signers([bob])
+    .rpc({commitment: "confirmed"});
+
+    let bal_after = await conn.getBalance(getVaultPDA(alice.publicKey)[0], "confirmed");
+
+    should().equal(bal_after, bal + transfer_amount, "Balance did not change.");
+
+  });
+
   async function airdrop(to: PublicKey, amount: number) { 
     const blockhash = await conn.getLatestBlockhash();
     await conn.confirmTransaction({
