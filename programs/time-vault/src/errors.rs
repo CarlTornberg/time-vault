@@ -6,4 +6,6 @@ pub enum VaultError {
     Locked,
     #[msg("Vault is still on cooldown")]
     Cooldown,
+    #[msg("Must be 0 <= x <= i64::MAX")]
+    InvalidCooldown,
 }
