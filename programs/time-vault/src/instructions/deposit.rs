@@ -17,7 +17,7 @@ pub fn deposit(ctx: Context<Deposit>, lamports: u64) -> Result<()> {
 }
 
 #[derive(Accounts)]
-#[instruction(lamports: u64)]
+#[instruction(lamports: i64)]
 pub struct Deposit<'info> {
     #[account(mut)]
     from: Signer<'info>,

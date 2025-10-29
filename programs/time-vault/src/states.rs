@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 pub struct Vault {
     pub owner: Pubkey,
     pub is_locked: bool,
-    pub withdraw_cooldown: u64,
-    pub recent_withdraw: u64,
+    pub withdraw_cooldown: i64,
+    pub recent_withdraw: i64,
     pub bump: u8,
 }
