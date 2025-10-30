@@ -8,4 +8,8 @@ pub enum VaultError {
     Cooldown,
     #[msg("Must be 0 <= x <= i64::MAX")]
     InvalidCooldown,
+    #[msg("Incorrect vault address")]
+    IncorrrectVaultAddress,
+    #[msg("The vault used and the owner provided does not match")]
+    IncorrectVault,
 }

@@ -1,17 +1,18 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::VaultError, states::Vault};
+use crate::{errors::VaultError, states::VaultData};
 
 pub fn initialize_vault(ctx: Context<Initialize>, withdraw_cooldown: i64) -> Result<()>{
     require_gte!(withdraw_cooldown, 0, VaultError::InvalidCooldown);
     
-    let vault = &mut ctx.accounts.vault;
-    vault.owner = ctx.accounts.signer.key();
-    vault.is_locked = true;
-    vault.recent_withdraw = 0;
-    vault.withdraw_cooldown = withdraw_cooldown;
+    let vault_data = &mut ctx.accounts.vault_data;
+    vault_data.owner = ctx.accounts.signer.key();
+    vault_data.is_locked = true;
+    vault_data.withdraw_cooldown = withdraw_cooldown;
+    vault_data.recent_withdraw = 0;
+    vault_data.bump = ctx.bumps.vault_data;
     
-    msg!("Created vault {} with owner {} and withdraw cooldown {}", vault.key(), vault.owner, vault.withdraw_cooldown);
+    msg!("Created vault {} with owner {} and withdraw cooldown {}", vault_data.key(), vault_data.owner, vault_data.withdraw_cooldown);
     Ok(())
 }
 
@@ -24,11 +25,11 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = signer,
-        space = 8 + Vault::INIT_SPACE,
-        seeds = [b"vault", signer.key().as_ref()],
+        space = 8 + VaultData::INIT_SPACE,
+        seeds = [b"vault_data", signer.key().as_ref()],
         bump,
     )]
-    vault: Account<'info, Vault>,
+    vault_data: Account<'info, VaultData>,
 
     system_program: Program<'info, System>,
 }

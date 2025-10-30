@@ -1,21 +1,47 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program} from "@coral-xyz/anchor";
 import { TimeVault } from "../target/types/time_vault";
-import { Keypair, PublicKey, LAMPORTS_PER_SOL, Signer } from "@solana/web3.js";
+import { Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { should } from "chai";
+import { createNewMint, getKeypairFromFile } from "../tests/utils/create-token-mint-solana/create-mint"
+import { Account, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
+import { min } from "bn.js";
 
 describe("time-vault", () => {
 
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
+  const mintAuthority = getKeypairFromFile("/.config/solana/id.json");
   const program = anchor.workspace.timeVault as Program<TimeVault>;
   const conn = program.provider.connection;
   const alice = Keypair.generate();
   const bob = Keypair.generate();
+  let mint: Keypair;
+  let mintVault: Account;
   console.log("Alice:", alice.publicKey, "\nPDA:", getVaultPDA(alice.publicKey));
   console.log("Bob:", bob.publicKey, "\nPDA:", getVaultPDA(bob.publicKey));
   
+  it('Create new mint', async () => { 
+    await airdrop(mintAuthority.publicKey, LAMPORTS_PER_SOL);
+    mint = await createNewMint(conn, mintAuthority);
+  });
+  
+  it('Mint to mint vault', async () => {
+    const mintAmount: bigint = BigInt(1000000);
+    // Create ATA before minting, or the account is not init'd and is a system program.
+    mintVault = await getOrCreateAssociatedTokenAccount(conn, mintAuthority, mint.publicKey, mintAuthority.publicKey);
+    await mintTo(
+      conn,
+      mintAuthority,
+      mint.publicKey,
+      mintVault.address,
+      mintAuthority,
+      mintAmount,
+    );
+    mintVault = await getOrCreateAssociatedTokenAccount(conn, mintAuthority, mint.publicKey, mintAuthority.publicKey);
+    should().equal(mintVault.amount, mintAmount, "Failed to mint to vault"); 
+  });
 
   it('Initialize alice vault', async () => {
     await airdrop(alice.publicKey, LAMPORTS_PER_SOL);
@@ -108,7 +134,25 @@ describe("time-vault", () => {
     catch(e) {
       should().equal(e.error.errorCode.code, "Locked", "Incorrect error");
     }
-    
+  });
+
+  it('Alice withdraws lamport from her Vault', async () => {
+
+    const bal_before = await conn.getBalance(alice.publicKey, "confirmed");
+    const transfer_amount: number = 100;
+
+    await program.methods
+    .withdraw(new anchor.BN(transfer_amount))
+    .accounts({
+      owner: alice.publicKey, 
+    })
+    .signers([alice])
+    .rpc({commitment: "confirmed"});
+
+    const bal_after = await conn.getBalance(alice.publicKey, "confirmed");
+
+    should().equal(bal_before + transfer_amount, bal_after);
+
   });
 
   async function airdrop(to: PublicKey, amount: number) { 

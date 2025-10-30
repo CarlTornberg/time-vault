@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 #[account]
 #[derive(InitSpace)]
-pub struct Vault {
+pub struct VaultData {
     pub owner: Pubkey,
     pub is_locked: bool,
     pub withdraw_cooldown: i64,
