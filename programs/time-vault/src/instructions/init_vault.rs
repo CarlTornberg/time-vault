@@ -6,13 +6,13 @@ pub fn initialize_vault(ctx: Context<Initialize>, withdraw_cooldown: i64) -> Res
     require_gte!(withdraw_cooldown, 0, VaultError::InvalidCooldown);
     
     let vault_data = &mut ctx.accounts.vault_data;
-    vault_data.owner = ctx.accounts.signer.key();
+    vault_data.authority = ctx.accounts.signer.key();
     vault_data.is_locked = true;
     vault_data.withdraw_cooldown = withdraw_cooldown;
     vault_data.recent_withdraw = 0;
     vault_data.bump = ctx.bumps.vault_data;
     
-    msg!("Created vault {} with owner {} and withdraw cooldown {}", vault_data.key(), vault_data.owner, vault_data.withdraw_cooldown);
+    msg!("Created vault {} with owner {} and withdraw cooldown {}", vault_data.key(), vault_data.authority, vault_data.withdraw_cooldown);
     Ok(())
 }
 

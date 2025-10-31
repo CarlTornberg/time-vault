@@ -4,9 +4,7 @@ import { TimeVault } from "../target/types/time_vault";
 import { Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { should } from "chai";
 import { createNewMint, getKeypairFromFile } from "../tests/utils/create-token-mint-solana/create-mint"
-import { Account, getAccount, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, mintTo, mintToChecked, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { log } from "console";
-import { token } from "@coral-xyz/anchor/dist/cjs/utils";
+import { Account, getAccount, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 describe("time-vault", () => {
 
@@ -76,7 +74,7 @@ describe("time-vault", () => {
   it('Lock and unlock alice vault', async () => {
     await program.methods
       .lock(true)
-      .accounts({owner: alice.publicKey})
+      .accounts({authority: alice.publicKey})
       .signers([alice])
       .rpc({commitment: "confirmed"});
     let vault = await program.account
@@ -88,7 +86,7 @@ describe("time-vault", () => {
     should().equal(vault.isLocked, true, "Vault is not locked");
     await program.methods
       .lock(false)
-      .accounts({owner: alice.publicKey})
+      .accounts({authority: alice.publicKey})
       .signers([alice])
       .rpc({commitment: "confirmed"});
     vault = await program.account
@@ -129,13 +127,13 @@ describe("time-vault", () => {
     const vaultDataPDA = getVaultDataPDA(alice.publicKey)[0];
     const tokenVaultPDA = getTokenVaultPDA(vaultDataPDA, mint.publicKey);
 
-    await program.methods.lock(false).accounts({owner: alice.publicKey}).signers([alice]).rpc({commitment: "confirmed"});
+    await program.methods.lock(false).accounts({authority: alice.publicKey}).signers([alice]).rpc({commitment: "confirmed"});
 
     try{
       await program.methods
       .deposit(new anchor.BN(transferAmount))
       .accounts({
-        signer: alice.publicKey,
+        authority: alice.publicKey,
         vaultData: vaultDataPDA,
         // tokenVault: getTokenVaultPDA(getVaultDataPDA(alice.publicKey)[0], mint.publicKey)[0],
         fromAta: aliceATA.address,

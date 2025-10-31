@@ -6,7 +6,7 @@ pub const VAULT_DATA_SEED: &[u8] = b"vault_data";
 #[account]
 #[derive(InitSpace)]
 pub struct VaultData {
-    pub owner: Pubkey,
+    pub authority: Pubkey,
     pub is_locked: bool,
     pub withdraw_cooldown: i64,
     pub recent_withdraw: i64,
