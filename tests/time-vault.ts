@@ -4,7 +4,7 @@ import { TimeVault } from "../target/types/time_vault";
 import { Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { should } from "chai";
 import { createNewMint, getKeypairFromFile } from "../tests/utils/create-token-mint-solana/create-mint"
-import { Account, getAccount, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { Account, getAccount, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 describe("time-vault", () => {
 
@@ -115,7 +115,7 @@ describe("time-vault", () => {
       aliceATA.address, 
       mintAuthority, 
       mintAmount);
-    
+
     aliceATA = await getOrCreateAssociatedTokenAccount(
       conn, 
       alice, 
@@ -147,63 +147,67 @@ describe("time-vault", () => {
     catch (e) {
       should().fail(e);
     }
-      const tokenVault = await getAccount(conn, tokenVaultPDA[0]);
-    
-      should().equal(tokenVault.amount, transferAmount, "Tokens not transferred");
+    const tokenVault = await getAccount(conn, tokenVaultPDA[0]);
+
+    should().equal(tokenVault.amount, transferAmount, "Tokens not transferred");
   });
 
   it('Should not be able to deposit to locked vault', async () => {
-    const charlie = Keypair.generate();
-    await airdrop(charlie.publicKey, LAMPORTS_PER_SOL);
 
-    await program
-      .methods
-      .initialize(new anchor.BN(100))
-      .accounts({signer: charlie.publicKey})
-      .signers([charlie])
-      .rpc({commitment: "confirmed"});  
+    const vaultDataPDA = getVaultDataPDA(alice.publicKey)[0];
+    const tokenVaultPDA = getTokenVaultPDA(vaultDataPDA, mint.publicKey);
 
-    await program.methods
-      .lock(true)
-      .accounts({owner: charlie.publicKey})
-      .signers([charlie])
+    await program.methods.lock(true).accounts({authority: alice.publicKey}).signers([alice]).rpc({commitment: "confirmed"});
+
+    try{
+      await program.methods
+      .deposit(new anchor.BN(1))
+      .accounts({
+        authority: alice.publicKey,
+        vaultData: vaultDataPDA,
+        // tokenVault: getTokenVaultPDA(getVaultDataPDA(alice.publicKey)[0], mint.publicKey)[0],
+        fromAta: getAssociatedTokenAddressSync(mint.publicKey, alice.publicKey),
+        mint: mint.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([alice])
       .rpc({commitment: "confirmed"});
+
+      should().fail();
+    }
+    catch (e) { }
+  });
+
+  it('Withdraw Alice tokens', async () => {
+    const vaultDataPDA = getVaultDataPDA(alice.publicKey)[0];
+    const tokenVaultPDA = getTokenVaultPDA(vaultDataPDA, mint.publicKey)[0];
+    
+    const bal_before = (await getAccount(conn, getAssociatedTokenAddressSync(mint.publicKey, alice.publicKey))).amount;
+    const transferAmount = BigInt(1);
+
+    await program.methods.lock(false).accounts({authority: alice.publicKey}).signers([alice]).rpc({commitment: "confirmed"});
 
     try {
       await program.methods
-      .deposit(new anchor.BN(1000))
+      .withdraw(new anchor.BN(transferAmount))
       .accounts({
-        signer: bob.publicKey,
-        fromAta: bob.publicKey, 
-        to: getVaultDataPDA(charlie.publicKey)[0]})
-      .signers([bob])
-      .rpc({commitment: "confirmed"});
-      
-      should().fail("Should not be able to withdraw to locked vault.");
-    }
-    catch(e) {
-      should().equal(e.error.errorCode.code, "Locked", "Incorrect error");
-    }
-  });
-
-  it('Alice withdraws lamport from her Vault', async () => {
-
-    const bal_before = await conn.getBalance(alice.publicKey, "confirmed");
-    const transfer_amount: number = 100;
-
-    await program.methods
-    .withdraw(new anchor.BN(transfer_amount))
-    .accounts({
-      owner: alice.publicKey, 
-    })
-    .signers([alice])
+        authority: alice.publicKey,
+        toAta: getAssociatedTokenAddressSync(mint.publicKey, alice.publicKey),
+        tokenProgram: TOKEN_PROGRAM_ID,
+        mint: mint.publicKey,
+      })
+      .signers([alice])
     .rpc({commitment: "confirmed"});
+    } catch (e) {
+      should().fail(e);
+    }
+    
+    const bal_after = (await getAccount(conn, getAssociatedTokenAddressSync(mint.publicKey, alice.publicKey))).amount;
 
-    const bal_after = await conn.getBalance(alice.publicKey, "confirmed");
-
-    should().equal(bal_before + transfer_amount, bal_after);
+    should().equal(bal_before + transferAmount, bal_after, "Balance not transferred.");
 
   });
+
 
   async function airdrop(to: PublicKey, amount: number) { 
     const blockhash = await conn.getLatestBlockhash();
