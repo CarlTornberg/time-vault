@@ -4,8 +4,9 @@ import { TimeVault } from "../target/types/time_vault";
 import { Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { should } from "chai";
 import { createNewMint, getKeypairFromFile } from "../tests/utils/create-token-mint-solana/create-mint"
-import { Account, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
-import { min } from "bn.js";
+import { Account, getAccount, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, mintTo, mintToChecked, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { log } from "console";
+import { token } from "@coral-xyz/anchor/dist/cjs/utils";
 
 describe("time-vault", () => {
 
@@ -19,8 +20,8 @@ describe("time-vault", () => {
   const bob = Keypair.generate();
   let mint: Keypair;
   let mintVault: Account;
-  console.log("Alice:", alice.publicKey, "\nPDA:", getVaultPDA(alice.publicKey));
-  console.log("Bob:", bob.publicKey, "\nPDA:", getVaultPDA(bob.publicKey));
+  console.log("Alice:", alice.publicKey.toBase58(), "\nPDA:", getVaultDataPDA(alice.publicKey)[0].toBase58());
+  console.log("Bob:", bob.publicKey.toBase58(), "\nPDA:", getVaultDataPDA(bob.publicKey)[0].toBase58());
   
   it('Create new mint', async () => { 
     await airdrop(mintAuthority.publicKey, LAMPORTS_PER_SOL);
@@ -43,17 +44,33 @@ describe("time-vault", () => {
     should().equal(mintVault.amount, mintAmount, "Failed to mint to vault"); 
   });
 
-  it('Initialize alice vault', async () => {
-    await airdrop(alice.publicKey, LAMPORTS_PER_SOL);
+  it('Mint to bob', async () => {
     await airdrop(bob.publicKey, LAMPORTS_PER_SOL);
 
-    const tx = await program
+    const mintAmount: bigint = BigInt(1000000);
+    // Create ATA before minting, or the account is not init'd and is a system program.
+    mintVault = await getOrCreateAssociatedTokenAccount(conn, bob, mint.publicKey, bob.publicKey);
+    await mintTo(
+      conn,
+      bob,
+      mint.publicKey,
+      mintVault.address,
+      mintAuthority,
+      mintAmount
+    );
+    mintVault = await getOrCreateAssociatedTokenAccount(conn, bob, mint.publicKey, bob.publicKey);
+    should().equal(mintVault.amount, mintAmount, "Failed to mint to vault"); 
+  });
+
+  it('Initialize alice vault', async () => {
+    await airdrop(alice.publicKey, LAMPORTS_PER_SOL);
+
+    await program
       .methods
       .initialize(new anchor.BN(100))
       .accounts({signer: alice.publicKey})
       .signers([alice])
       .rpc({commitment: "confirmed"});  
-    console.log(tx);
   });
 
   it('Lock and unlock alice vault', async () => {
@@ -63,9 +80,9 @@ describe("time-vault", () => {
       .signers([alice])
       .rpc({commitment: "confirmed"});
     let vault = await program.account
-      .vault
+      .vaultData
       .fetch(
-        getVaultPDA(alice.publicKey)[0],
+        getVaultDataPDA(alice.publicKey)[0],
         "confirmed"
       );
     should().equal(vault.isLocked, true, "Vault is not locked");
@@ -75,32 +92,66 @@ describe("time-vault", () => {
       .signers([alice])
       .rpc({commitment: "confirmed"});
     vault = await program.account
-      .vault
+      .vaultData
       .fetch(
-        getVaultPDA(alice.publicKey)[0],
+        getVaultDataPDA(alice.publicKey)[0],
         "confirmed"
       );
     should().equal(vault.isLocked, false, "Vault did not unlock.");
   });
 
-  it('Bob should transfer to Alice', async () => {
+  it('Alice deposits to own vault', async () => {
 
-    const bal = await conn.getBalance(getVaultPDA(alice.publicKey)[0], "confirmed");
-    const transfer_amount: number = 100.000;
+    const mintAmount = BigInt(100);
+    const transferAmount = BigInt(2);
+    let aliceATA = await getOrCreateAssociatedTokenAccount(
+      conn, 
+      alice, 
+      mint.publicKey, 
+      alice.publicKey);
 
-    await program.methods
-    .deposit(new anchor.BN(transfer_amount))
-    .accounts({
-      from: bob.publicKey,
-      to: getVaultPDA(alice.publicKey)[0],
-    })
-    .signers([bob])
-    .rpc({commitment: "confirmed"});
+    await mintTo(
+      conn, 
+      alice, 
+      mint.publicKey, 
+      aliceATA.address, 
+      mintAuthority, 
+      mintAmount);
+    
+    aliceATA = await getOrCreateAssociatedTokenAccount(
+      conn, 
+      alice, 
+      mint.publicKey, 
+      alice.publicKey);
 
-    let bal_after = await conn.getBalance(getVaultPDA(alice.publicKey)[0], "confirmed");
+    should().equal(aliceATA.amount, mintAmount, "Failed to mint to Alice's ATA"); 
 
-    should().equal(bal_after, bal + transfer_amount, "Balance did not change.");
+    const vaultDataPDA = getVaultDataPDA(alice.publicKey)[0];
+    const tokenVaultPDA = getTokenVaultPDA(vaultDataPDA, mint.publicKey);
 
+    await program.methods.lock(false).accounts({owner: alice.publicKey}).signers([alice]).rpc({commitment: "confirmed"});
+
+    try{
+      await program.methods
+      .deposit(new anchor.BN(transferAmount))
+      .accounts({
+        signer: alice.publicKey,
+        vaultData: vaultDataPDA,
+        // tokenVault: getTokenVaultPDA(getVaultDataPDA(alice.publicKey)[0], mint.publicKey)[0],
+        fromAta: aliceATA.address,
+        mint: mint.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([alice])
+      .rpc({commitment: "confirmed"});
+
+    }
+    catch (e) {
+      should().fail(e);
+    }
+      const tokenVault = await getAccount(conn, tokenVaultPDA[0]);
+    
+      should().equal(tokenVault.amount, transferAmount, "Tokens not transferred");
   });
 
   it('Should not be able to deposit to locked vault', async () => {
@@ -124,8 +175,9 @@ describe("time-vault", () => {
       await program.methods
       .deposit(new anchor.BN(1000))
       .accounts({
-        from: bob.publicKey, 
-        to: getVaultPDA(charlie.publicKey)[0]})
+        signer: bob.publicKey,
+        fromAta: bob.publicKey, 
+        to: getVaultDataPDA(charlie.publicKey)[0]})
       .signers([bob])
       .rpc({commitment: "confirmed"});
       
@@ -164,11 +216,22 @@ describe("time-vault", () => {
     }, "confirmed");
   };
 
-  function getVaultPDA(of: PublicKey) {
+  function getVaultDataPDA(of: PublicKey) {
     return PublicKey.findProgramAddressSync(
       [
-        anchor.utils.bytes.utf8.encode("vault"),
+        anchor.utils.bytes.utf8.encode("vault_data"),
         of.toBuffer()
+      ],
+      program.programId
+    )
+  }
+  
+  function getTokenVaultPDA(vaultData: PublicKey, mint: PublicKey) {
+    return PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("token_vault"),
+        mint.toBuffer(),
+        vaultData.toBuffer()
       ],
       program.programId
     )
