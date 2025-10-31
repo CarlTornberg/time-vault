@@ -155,7 +155,6 @@ describe("time-vault", () => {
   it('Should not be able to deposit to locked vault', async () => {
 
     const vaultDataPDA = getVaultDataPDA(alice.publicKey)[0];
-    const tokenVaultPDA = getTokenVaultPDA(vaultDataPDA, mint.publicKey);
 
     await program.methods.lock(true).accounts({authority: alice.publicKey}).signers([alice]).rpc({commitment: "confirmed"});
 
@@ -179,8 +178,6 @@ describe("time-vault", () => {
   });
 
   it('Withdraw Alice tokens', async () => {
-    const vaultDataPDA = getVaultDataPDA(alice.publicKey)[0];
-    const tokenVaultPDA = getTokenVaultPDA(vaultDataPDA, mint.publicKey)[0];
     
     const bal_before = (await getAccount(conn, getAssociatedTokenAddressSync(mint.publicKey, alice.publicKey))).amount;
     const transferAmount = BigInt(1);
@@ -190,7 +187,7 @@ describe("time-vault", () => {
     try {
       await program.methods
       .withdraw(new anchor.BN(transferAmount))
-      .accounts({
+      .accountsPartial({
         authority: alice.publicKey,
         toAta: getAssociatedTokenAddressSync(mint.publicKey, alice.publicKey),
         tokenProgram: TOKEN_PROGRAM_ID,

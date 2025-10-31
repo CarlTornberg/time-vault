@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::VaultError, states::{self, VaultData, VAULT_DATA_SEED}};
+use crate::{errors::VaultError, states::{VaultData, VAULT_DATA_SEED}};
 
 pub fn initialize_vault(ctx: Context<Initialize>, withdraw_cooldown: i64) -> Result<()>{
     require_gte!(withdraw_cooldown, 0, VaultError::InvalidCooldown);
