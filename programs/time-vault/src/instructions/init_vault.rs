@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::VaultError, states::VaultData};
+use crate::{errors::VaultError, states::{self, VaultData, VAULT_DATA_SEED}};
 
 pub fn initialize_vault(ctx: Context<Initialize>, withdraw_cooldown: i64) -> Result<()>{
     require_gte!(withdraw_cooldown, 0, VaultError::InvalidCooldown);
@@ -26,7 +26,7 @@ pub struct Initialize<'info> {
         init,
         payer = signer,
         space = 8 + VaultData::INIT_SPACE,
-        seeds = [b"vault_data", signer.key().as_ref()],
+        seeds = [VAULT_DATA_SEED, signer.key().as_ref()],
         bump,
     )]
     vault_data: Account<'info, VaultData>,
