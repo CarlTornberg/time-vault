@@ -47,7 +47,9 @@ pub struct Deposit<'info> {
     )]
     token_vault: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(mut)]
+    #[account(mut,
+        token::mint = mint,
+    )]
     from_ata: InterfaceAccount<'info, TokenAccount>,
 
     mint: InterfaceAccount<'info, Mint>,
