@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::states::Vault;
+use crate::states::{VaultData, VAULT_DATA_SEED};
 
 pub fn set_locked(ctx: Context<Lock>, locked: bool) -> Result<()> {
     let vault = &mut ctx.accounts.vault;
@@ -19,8 +19,8 @@ pub struct Lock<'info> {
         mut,
         has_one = owner, // Checks the ownership of the vault 
         owner = crate::ID, // Checks the ownership of the account (Front-running)
-        seeds = [b"vault", owner.key().as_ref()],
+        seeds = [VAULT_DATA_SEED, owner.key().as_ref()],
         bump,
     )]
-    vault: Account<'info, Vault>,
+    vault: Account<'info, VaultData>,
 }
