@@ -5,6 +5,9 @@ package_manager = "yarn"
 resolution = true
 skip-lint = false
 
+[programs.devnet]
+time_vault = "8drWJPiyFu9CtzbH3p1oK4iQG5HKGR6Cx3ReKDoPSThh"
+
 [programs.localnet]
 time_vault = "D8zgbdfD5AMJdS58ckjMD9MzbwY7fMVnS7ycteq8CwzA"
 
@@ -12,8 +15,8 @@ time_vault = "D8zgbdfD5AMJdS58ckjMD9MzbwY7fMVnS7ycteq8CwzA"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
-wallet = "~/.config/solana/id.json"
+cluster = "devnet"
+wallet = "~/.config/solana/devkey-bytes.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
