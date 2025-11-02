@@ -4,7 +4,8 @@ import { TimeVault } from "../target/types/time_vault";
 import { Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { should } from "chai";
 import { createNewMint, getKeypairFromFile } from "../tests/utils/create-token-mint-solana/create-mint"
-import { Account, getAccount, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { Account, createMint, getAccount, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { min } from "bn.js";
 
 describe("time-vault", () => {
 
@@ -23,7 +24,8 @@ describe("time-vault", () => {
   
   it('Create new mint', async () => { 
     await airdrop(mintAuthority.publicKey, LAMPORTS_PER_SOL);
-    mint = await createNewMint(conn, mintAuthority);
+    mint = getKeypairFromFile("/.config/solana/TimeVaultToken.json")
+    await createMint(conn, mintAuthority, mintAuthority.publicKey, null, 6, mint);
   });
   
   it('Mint to mint vault', async () => {

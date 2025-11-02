@@ -1,7 +1,7 @@
 #![allow(unexpected_cfgs, deprecated)]
 use anchor_lang::prelude::*;
 
-declare_id!("8drWJPiyFu9CtzbH3p1oK4iQG5HKGR6Cx3ReKDoPSThh");
+declare_id!("GF2o6eTjo3uACFEshLKqQ9CwuB5x5tCfjzvRhCy1rCpa");
 
 mod errors;
 mod states;

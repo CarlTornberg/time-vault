@@ -9,13 +9,12 @@ skip-lint = false
 time_vault = "8drWJPiyFu9CtzbH3p1oK4iQG5HKGR6Cx3ReKDoPSThh"
 
 [programs.localnet]
-time_vault = "D8zgbdfD5AMJdS58ckjMD9MzbwY7fMVnS7ycteq8CwzA"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/devkey-bytes.json"
 
 [scripts]
